@@ -10,14 +10,15 @@ from .resume_parser.agent import resume_parser_agent
 load_dotenv()
 
 # Configure Gemini
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-model = "gemini-2.5-flash"
+# genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+MODEL = "gemini-2.5-flash"
 
 # --- Agents ---
 main_agent = LlmAgent(
     name="main",
-    instructions=MAIN_AGENT_PROMPT,
-    model=model,
+    instruction=MAIN_AGENT_PROMPT,
+    output_key="resume_params",
+    model=MODEL,
     sub_agents=[resume_parser_agent, job_searcher_agent]
 )
 

@@ -14,7 +14,7 @@ from .prompt import RESUME_PARSER_PROMPT
 load_dotenv()
 
 # Configure Gemini
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+# genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 model = genai.GenerativeModel("gemini-2.5-flash")  # Updated to 2.5 Flash
 
 # --- Agents ---
