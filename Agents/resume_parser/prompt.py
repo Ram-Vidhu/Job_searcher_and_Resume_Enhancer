@@ -8,7 +8,7 @@ Once done reading the resume, extract the following details from the resume by p
 - summary (summary of the roles he contributed)
 - Experience (in years, sum it up across companies and categorise it as juinor, senior, mid-senior based on the years of experience)
 - Last worked location
-After that delegate the task with output resume details to the 'job_searcher_agent' and return the output strictly in JSON format:
+After that delegate the task to the 'job_searcher_agent' and return the output strictly in JSON format:
 {
   "role": "...",
   "skills": ["...", "..."],

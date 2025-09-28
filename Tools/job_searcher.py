@@ -1,9 +1,8 @@
-import os
-from dotenv import load_dotenv
 import pandas as pd
 import chromadb
+import json
 from sentence_transformers import SentenceTransformer
-from google import genai
+from typing import Optional
 
 # Embedding model
 sent_transform = SentenceTransformer("all-MiniLM-L6-v2")
@@ -17,13 +16,27 @@ collection = client.get_or_create_collection(
     metadata={"hnsw:space": "cosine"}  # use cosine similarity
 )
 
-def search_jobs_chroma(resume_text, top_k=5, filters=None):
+
+def search_jobs_chroma(resume_details: str, top_k: int = 5, filters: Optional[dict] = None):
+    """
+    resume_details: JSON string containing parsed resume info
+    top_k: number of job results
+    filters: optional filter dict
+    """
+    try:
+        resume_dict = json.loads(resume_details)
+    except (TypeError, json.JSONDecodeError):
+        resume_dict = resume_details if isinstance(resume_details, dict) else {"text": str(resume_details)}
+
+    # Convert dict to text for embedding
+    resume_text = " ".join([f"{k}: {v}" for k, v in resume_dict.items() if v])
+
     embedding = sent_transform.encode([resume_text])[0]
 
     results = collection.query(
         query_embeddings=[embedding.tolist()],
         n_results=top_k,
-        where=filters  # e.g., {"job_location": "Berlin", "job_type": "Full-time"}
+        where=filters  # will be None by default
     )
 
     jobs = []
@@ -32,4 +45,5 @@ def search_jobs_chroma(resume_text, top_k=5, filters=None):
             "similarity_score": results["distances"][0][i],
             **results["metadatas"][0][i],
         })
-    return pd.DataFrame(jobs)
+
+    return jobs  # list of dicts

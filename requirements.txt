@@ -1,6 +1,7 @@
 google-generativeai
 python-docx
 PyPDF2
+pandas
 python-dotenv
 pyspark
 chromadb
