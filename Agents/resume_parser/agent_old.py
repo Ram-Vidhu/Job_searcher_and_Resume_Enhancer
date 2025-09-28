@@ -1,28 +1,30 @@
 # agent.py
 
 import os
+import argparse
 import json
 from dotenv import load_dotenv
 import google.generativeai as genai
-from google.adk import Agent
-# from google.genai.agents import Agent, Tool
-from google.adk.tools.agent_tool import AgentTool
+from google.genai.agents import Agent
 from PyPDF2 import PdfReader
 import docx
 from .prompt import RESUME_PARSER_PROMPT
 
-# -------------------------
-# Setup
-# -------------------------
+# Load environment variables
 load_dotenv()
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-model = "gemini-2.5-flash"
 
-# -------------------------
-# Utilities (not tools, just helpers)
-# -------------------------
+# Configure Gemini
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+model = genai.GenerativeModel("gemini-2.5-flash")  # Updated to 2.5 Flash
+
+# --- Agents ---
+resume_parser_agent = Agent(
+    name="resume_parser",
+    instructions=RESUME_PARSER_PROMPT,
+    model=model,
+)
+
 def read_resume_file(path: str) -> str:
-    """Read resume text from txt/pdf/docx file."""
     ext = os.path.splitext(path)[1].lower()
     if ext == ".txt":
         with open(path, "r", encoding="utf-8") as f:
@@ -36,22 +38,20 @@ def read_resume_file(path: str) -> str:
     else:
         raise ValueError(f"Unsupported file type: {ext}")
 
+
 def build_prompt(resume_text: str) -> str:
-    """Build parser prompt with resume text."""
     return f"{RESUME_PARSER_PROMPT}\n\nResume:\n{resume_text}\n"
 
-# -------------------------
-# Core Tool
-# -------------------------
+
 def parse_resume(resume_text: str) -> dict:
-    """Extract structured info from resume text."""
     prompt = build_prompt(resume_text)
     response = model.generate_content(prompt)
     raw_text = response.text.strip()
 
-    # Clean markdown fences if model includes ```json ... ```
+    # Remove markdown fences if present
     if raw_text.startswith("```"):
-        raw_text = raw_text.strip("`")
+        raw_text = raw_text.strip("`")  # removes ```json and ```
+        # Sometimes model puts "json\n{...}\n", so split at first '{'
         raw_text = raw_text[raw_text.find("{") : raw_text.rfind("}") + 1]
 
     try:
@@ -59,18 +59,20 @@ def parse_resume(resume_text: str) -> dict:
     except Exception as e:
         return {"error": f"Failed to parse JSON: {e}", "raw": response.text}
 
-# -------------------------
-# Tool + Agent
-# -------------------------
-resume_parser_tool = AgentTool(
-    name="parse_resume",
-    description="Extracts role, skills, experience, last company, last location from a resume.",
-    func=parse_resume,
-)
 
-resume_parser_agent = Agent(
-    name="resume_parser",
-    instructions="You are a resume parsing AI agent. Use the tool to extract information.",
-    model=model,
-    tools=[resume_parser_tool],
-)
+parser = argparse.ArgumentParser(description="AI Resume Parser using Gemini 2.5 Flash")
+parser.add_argument("resume_path", type=str, help="Path to resume file (txt/pdf/docx)")
+args = parser.parse_args()
+
+if not os.path.exists(args.resume_path):
+    print(f"File not found: {args.resume_path}")
+    exit(1)
+
+try:
+    resume = read_resume_file(args.resume_path)
+except Exception as e:
+    print(f"Error reading file: {e}")
+    exit(1)
+
+result = parse_resume(resume)
+print(json.dumps(result, indent=2))
